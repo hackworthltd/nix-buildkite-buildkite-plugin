@@ -21,7 +21,7 @@ import Data.Maybe ( fromMaybe, listToMaybe )
 import Data.Traversable ( for )
 import qualified Prelude
 import Prelude hiding ( getContents, lines, readFile, words )
-import System.Environment ( getArgs )
+import System.Environment ( getArgs, lookupEnv )
 
 -- bytestring
 import qualified Data.ByteString.Lazy
@@ -46,6 +46,12 @@ import Data.Text.IO ( readFile )
 main :: IO ()
 main = do
   jobsExpr <- fromMaybe "./jobs.nix" . listToMaybe <$> getArgs
+
+  cachixCmd <- do
+    cachixName <- lookupEnv "CACHIX_NAME"
+    case cachixName of
+      Nothing -> pure ""
+      Just name -> pure $ " | cachix push " <> name
 
   -- Run nix-instantiate on the jobs expression to instantiate .drvs for all
   -- things that may need to be built.
@@ -77,7 +83,7 @@ main = do
           step label drvPath =
             object
               [ "label" .= unpack label
-              , "command" .= String (pack ("nix-store -r" <> drvPath))
+              , "command" .= String (pack ("nix-store -r" <> drvPath <> cachixCmd))
               , "key" .= stepify drvPath
               , "depends_on" .= dependencies
               ]
