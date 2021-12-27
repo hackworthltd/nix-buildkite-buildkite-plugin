@@ -21,7 +21,7 @@ import Data.Maybe ( fromMaybe, listToMaybe )
 import Data.Traversable ( for )
 import qualified Prelude
 import Prelude hiding ( getContents, lines, readFile, words )
-import System.Environment ( getArgs )
+import System.Environment ( getArgs, lookupEnv )
 
 -- bytestring
 import qualified Data.ByteString.Lazy
@@ -49,9 +49,15 @@ main :: IO ()
 main = do
   jobsExpr <- fromMaybe "./jobs.nix" . listToMaybe <$> getArgs
 
+  postBuildHook <- do
+    cmd <- lookupEnv "POST_BUILD_HOOK"
+    case cmd of
+      Nothing -> return []
+      Just path -> return $ [ "--post-build-hook", path ]
+
   -- Run nix-instantiate on the jobs expression to instantiate .drvs for all
   -- things that may need to be built.
-  inputDrvPaths <- uniqueSort <$> Prelude.lines <$> readProcess "nix-instantiate" [ jobsExpr ] ""
+  inputDrvPaths <- uniqueSort <$> Prelude.lines <$> readProcess "nix-instantiate" (postBuildHook <> [ jobsExpr ]) ""
 
   -- Build an association list of a job name and the derivation that should be
   -- realised for that job.
@@ -79,7 +85,7 @@ main = do
           step label drvPath =
             object
               [ "label" .= unpack label
-              , "command" .= String (pack ("nix-store -r" <> drvPath))
+              , "command" .= String (pack $ unwords $ [ "nix-store" ] <> postBuildHook <> [ "-r", drvPath ])
               , "key" .= stepify drvPath
               , "depends_on" .= dependencies
               ]
