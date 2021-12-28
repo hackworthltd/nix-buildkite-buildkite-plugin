@@ -4,6 +4,9 @@ set -euo pipefail
 NIX_FILE="$BUILDKITE_PLUGIN_NIX_BUILDKITE_FILE"
 if [[ -n "${BUILDKITE_PLUGIN_NIX_BUILDKITE_POST_BUILD_HOOK:-}" ]]; then
     POST_BUILD_HOOK="$BUILDKITE_PLUGIN_NIX_BUILDKITE_POST_BUILD_HOOK"
+    echo "POST_BUILD_HOOK is $POST_BUILD_HOOK"
+else
+    echo "No post build hook set."
 fi
 
 echo "--- :nixos: Running nix-buildkite"
